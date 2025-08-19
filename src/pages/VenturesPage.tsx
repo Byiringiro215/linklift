@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, TrendingUp, Clock, DollarSign, Users, MapPin, Star } from 'lucide-react';
+import { useUser } from '../context/UserContext';
+import { useData } from '../context/DataContext';
 
 const VenturesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const { user } = useUser();
+  const { ventures } = useData();
+  const role = user?.role ?? 'investor';
 
   const categories = [
     { id: 'all', name: 'All Categories' },
@@ -16,118 +21,79 @@ const VenturesPage: React.FC = () => {
     { id: 'education', name: 'Education' }
   ];
 
-  const ventures = [
-    {
-      id: 1,
-      title: 'Urban Farming Initiative',
-      description: 'Sustainable vertical farming system bringing fresh produce to urban communities',
-      category: 'agriculture',
-      entrepreneur: 'Grace Uwimana',
-      rating: 4.8,
-      fundingGoal: 10000,
-      currentFunding: 7500,
-      minInvestment: 100,
-      expectedReturn: '12-15%',
-      timeline: '18 months',
-      location: 'Kigali',
-      investors: 23,
-      image: 'https://images.pexels.com/photos/1301856/pexels-photo-1301856.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tags: ['Sustainable', 'Community Impact', 'Food Security'],
-      verified: true
-    },
-    {
-      id: 2,
-      title: 'Tech Skills Training Center',
-      description: 'Comprehensive technology training programs for youth employment',
-      category: 'education',
-      entrepreneur: 'Jean-Claude Habimana',
-      rating: 4.9,
-      fundingGoal: 15000,
-      currentFunding: 6750,
-      minInvestment: 200,
-      expectedReturn: '10-12%',
-      timeline: '24 months',
-      location: 'Kigali',
-      investors: 18,
-      image: 'https://images.pexels.com/photos/3184298/pexels-photo-3184298.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tags: ['Education', 'Technology', 'Youth Development'],
-      verified: true
-    },
-    {
-      id: 3,
-      title: 'Community Marketplace',
-      description: 'Digital platform connecting local artisans with global customers',
-      category: 'technology',
-      entrepreneur: 'Marie Mukamana',
-      rating: 4.7,
-      fundingGoal: 8000,
-      currentFunding: 7200,
-      minInvestment: 150,
-      expectedReturn: '15-18%',
-      timeline: '12 months',
-      location: 'Kigali',
-      investors: 31,
-      image: 'https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tags: ['Digital', 'Artisans', 'Export'],
-      verified: true
-    },
-    {
-      id: 4,
-      title: 'Solar Panel Manufacturing',
-      description: 'Local production of affordable solar panels for rural communities',
-      category: 'manufacturing',
-      entrepreneur: 'Paul Niyonshuti',
-      rating: 4.6,
-      fundingGoal: 25000,
-      currentFunding: 12500,
-      minInvestment: 500,
-      expectedReturn: '16-20%',
-      timeline: '36 months',
-      location: 'Huye',
-      investors: 15,
-      image: 'https://images.pexels.com/photos/9875441/pexels-photo-9875441.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tags: ['Clean Energy', 'Manufacturing', 'Rural Development'],
-      verified: true
-    },
-    {
-      id: 5,
-      title: 'Mobile Clinic Service',
-      description: 'Healthcare delivery service for underserved rural communities',
-      category: 'services',
-      entrepreneur: 'Dr. Immaculée Nyirahabimana',
-      rating: 4.9,
-      fundingGoal: 18000,
-      currentFunding: 5400,
-      minInvestment: 300,
-      expectedReturn: '8-10%',
-      timeline: '24 months',
-      location: 'Musanze',
-      investors: 12,
-      image: 'https://images.pexels.com/photos/40568/medical-appointment-doctor-healthcare-40568.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tags: ['Healthcare', 'Rural', 'Social Impact'],
-      verified: false
-    },
-    {
-      id: 6,
-      title: 'Organic Coffee Cooperative',
-      description: 'Premium organic coffee processing and direct-to-consumer sales',
-      category: 'agriculture',
-      entrepreneur: 'Emmanuel Nsabimana',
-      rating: 4.8,
-      fundingGoal: 12000,
-      currentFunding: 9600,
-      minInvestment: 250,
-      expectedReturn: '14-17%',
-      timeline: '18 months',
-      location: 'Nyamasheke',
-      investors: 27,
-      image: 'https://images.pexels.com/photos/4350049/pexels-photo-4350049.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tags: ['Organic', 'Export', 'Cooperative'],
-      verified: true
-    }
-  ];
+  // removed static ventures to keep a single source of truth from DataContext
 
-  const filteredVentures = ventures.filter(venture => {
+  const sourceVentures = useMemo(() => ventures, [ventures]);
+
+  type DisplayVenture = {
+    id: string | number;
+    title: string;
+    description: string;
+    category: string;
+    entrepreneur?: string;
+    rating: number;
+    fundingGoal: number;
+    currentFunding: number;
+    minInvestment: number;
+    expectedReturn: string;
+    timeline: string;
+    location: string;
+    investors: number;
+    image: string;
+    verified: boolean;
+    tags: string[];
+    ownerId?: string;
+  };
+
+  const displayVentures: DisplayVenture[] = useMemo(() => {
+    const fallbackImage = 'https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=400';
+    return sourceVentures.map((v: any) => {
+      if (v && typeof v === 'object' && 'ownerId' in v) {
+        return {
+          id: v.id,
+          title: v.title,
+          description: v.description,
+          category: v.category,
+          entrepreneur: undefined,
+          rating: v.rating ?? 4.8,
+          fundingGoal: v.fundingGoal ?? 10000,
+          currentFunding: v.currentFunding ?? 0,
+          minInvestment: v.minInvestment ?? 100,
+          expectedReturn: v.expectedReturn ?? '10-12%',
+          timeline: v.timeline ?? '12 months',
+          location: v.location ?? 'Kigali',
+          investors: v.investors ?? 0,
+          image: v.image ?? fallbackImage,
+          verified: v.verified ?? false,
+          tags: [],
+          ownerId: v.ownerId,
+        } as DisplayVenture;
+      }
+      // assume static venture shape
+      const sv = v as any;
+      return {
+        id: sv.id,
+        title: sv.title,
+        description: sv.description,
+        category: sv.category,
+        entrepreneur: sv.entrepreneur,
+        rating: sv.rating,
+        fundingGoal: sv.fundingGoal,
+        currentFunding: sv.currentFunding,
+        minInvestment: sv.minInvestment,
+        expectedReturn: sv.expectedReturn,
+        timeline: sv.timeline,
+        location: sv.location,
+        investors: sv.investors,
+        image: sv.image ?? fallbackImage,
+        verified: !!sv.verified,
+        tags: (sv.tags ?? []) as string[],
+        ownerId: undefined,
+      } as DisplayVenture;
+    });
+  }, [sourceVentures]);
+
+  const filteredVentures = displayVentures.filter((venture) => {
     const matchesSearch = venture.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          venture.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || venture.category === selectedCategory;
@@ -227,15 +193,20 @@ const VenturesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Entrepreneur */}
-              <p className="text-sm text-slate-600 mb-3">by {venture.entrepreneur}</p>
+              {/* Entrepreneur / Owner */}
+              {(() => {
+                const ownerName = venture.ownerId === user?.id ? user?.name : venture.entrepreneur;
+                return ownerName ? (
+                  <p className="text-sm text-slate-600 mb-3">by {ownerName}</p>
+                ) : null;
+              })()}
 
               {/* Description */}
               <p className="text-sm text-slate-600 mb-4 line-clamp-3">{venture.description}</p>
 
               {/* Tags */}
               <div className="flex flex-wrap gap-1 mb-4">
-                {venture.tags.slice(0, 2).map(tag => (
+                {venture.tags.slice(0, 2).map((tag: string) => (
                   <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
                     {tag}
                   </span>
@@ -289,14 +260,16 @@ const VenturesPage: React.FC = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex space-x-2">
-                <button className="flex-1 bg-gradient-to-r from-blue-600 to-green-500 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-shadow">
-                  Invest Now
-                </button>
-                <button className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
-                  Details
-                </button>
-              </div>
+              {role === 'investor' ? (
+                <div className="flex space-x-2">
+                  <button className="flex-1 bg-gradient-to-r from-blue-600 to-green-500 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-shadow">
+                    Invest Now
+                  </button>
+                  <button className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+                    Details
+                  </button>
+                </div>
+              ) : null}
             </div>
           </motion.div>
         ))}

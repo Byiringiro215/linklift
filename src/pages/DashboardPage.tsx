@@ -1,11 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, DollarSign, Briefcase, Users, Plus, ArrowUpRight, Clock, Target } from 'lucide-react';
+import { TrendingUp, DollarSign, Briefcase, Users, Plus, ArrowUpRight, Target } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useData } from '../context/DataContext';
 
 const DashboardPage: React.FC = () => {
   const { user } = useUser();
+  const navigate = useNavigate();
+  const { myVentures, ventures, jobs, applications, addVenture, addJob } = useData();
+  const [showVentureForm, setShowVentureForm] = React.useState(false);
+  const [showJobForm, setShowJobForm] = React.useState(false);
+  const [ventureForm, setVentureForm] = React.useState({ title: '', description: '', category: 'technology' });
+  const [jobForm, setJobForm] = React.useState({
+    title: '', company: '', location: 'Kigali', type: 'full-time', category: 'technology', salary: '$0/hour', description: ''
+  });
 
   if (!user) {
     return (
@@ -39,6 +48,67 @@ const DashboardPage: React.FC = () => {
       case 'worker': return Users;
       default: return TrendingUp;
     }
+  };
+
+  const isWorker = user.role === 'worker';
+  const isEntrepreneur = user.role === 'entrepreneur';
+  const isInvestor = user.role === 'investor';
+
+  const defaultJobsFallbackCount = 6;
+  const workerStatsRaw = {
+    availableJobs: jobs.length || defaultJobsFallbackCount,
+    acceptedJobs: applications.filter(a => a.userId === user.id && a.status === 'accepted').length,
+    completedJobs: applications.filter(a => a.userId === user.id && a.status === 'completed').length,
+    appliedJobs: applications.filter(a => a.userId === user.id).length,
+  };
+  const workerStats = {
+    availableJobs: workerStatsRaw.availableJobs, // real count
+    acceptedJobs: workerStatsRaw.acceptedJobs || 1,
+    completedJobs: workerStatsRaw.completedJobs || 1,
+    appliedJobs: workerStatsRaw.appliedJobs || 1,
+  };
+
+  const entrepreneurStats = {
+    totalVentures: myVentures.length,
+    funded: myVentures.filter(v => v.status === 'funded').length,
+    pending: myVentures.filter(v => v.status === 'pending').length,
+    complete: myVentures.filter(v => v.status === 'complete').length,
+  };
+
+  const investorPostedJobIds = React.useMemo(() => new Set(jobs.filter(j => j.postedByUserId === user.id).map(j => j.id)), [jobs, user.id]);
+  const investorStats = {
+    availableVentures: ventures.length,
+    fundedVentures: ventures.filter(v => v.status === 'funded').length,
+    postedJobs: jobs.filter(j => j.postedByUserId === user.id).length,
+    totalApplications: applications.filter(a => investorPostedJobIds.has(a.jobId)).length,
+  };
+
+  const handleCreateVenture = () => {
+    addVenture({
+      title: ventureForm.title,
+      description: ventureForm.description,
+      category: ventureForm.category,
+      status: 'pending',
+    } as any);
+    setShowVentureForm(false);
+    setVentureForm({ title: '', description: '', category: 'technology' });
+    navigate('/ventures');
+  };
+
+  const handlePostJob = () => {
+    addJob({
+      title: jobForm.title,
+      company: jobForm.company,
+      location: jobForm.location,
+      type: jobForm.type as any,
+      category: jobForm.category,
+      salary: jobForm.salary,
+      description: jobForm.description,
+      remote: false,
+      urgent: false,
+    } as any);
+    setShowJobForm(false);
+    setJobForm({ title: '', company: '', location: 'Kigali', type: 'full-time', category: 'technology', salary: '$0/hour', description: '' });
   };
 
   return (
@@ -75,11 +145,11 @@ const DashboardPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-600">Total Balance</p>
-              <p className="text-2xl font-bold text-slate-800">${user.balance.toFixed(2)}</p>
+              <p className="text-sm text-slate-600">{isWorker ? 'Available Jobs' : isEntrepreneur ? 'Total Ventures' : 'Available Ventures'}</p>
+              <p className="text-2xl font-bold text-slate-800">{isWorker ? workerStats.availableJobs : isEntrepreneur ? entrepreneurStats.totalVentures : investorStats.availableVentures}</p>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-500 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-white" />
+              <TrendingUp className="w-6 h-6 text-white" />
             </div>
           </div>
         </motion.div>
@@ -92,8 +162,8 @@ const DashboardPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-600">Active Investments</p>
-              <p className="text-2xl font-bold text-slate-800">3</p>
+              <p className="text-sm text-slate-600">{isWorker ? 'Accepted Jobs' : isEntrepreneur ? 'Funded Ventures' : 'Funded Ventures'}</p>
+              <p className="text-2xl font-bold text-slate-800">{isWorker ? workerStats.acceptedJobs : isEntrepreneur ? entrepreneurStats.funded : investorStats.fundedVentures}</p>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-white" />
@@ -109,8 +179,8 @@ const DashboardPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-600">Monthly Returns</p>
-              <p className="text-2xl font-bold text-slate-800">$45.50</p>
+              <p className="text-sm text-slate-600">{isWorker ? 'Completed Jobs' : isEntrepreneur ? 'Pending Ventures' : 'Posted Jobs'}</p>
+              <p className="text-2xl font-bold text-slate-800">{isWorker ? workerStats.completedJobs : isEntrepreneur ? entrepreneurStats.pending : investorStats.postedJobs}</p>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center">
               <ArrowUpRight className="w-6 h-6 text-white" />
@@ -126,8 +196,8 @@ const DashboardPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-600">Community Rank</p>
-              <p className="text-2xl font-bold text-slate-800">#15</p>
+              <p className="text-sm text-slate-600">{isWorker ? 'Applied Jobs' : isEntrepreneur ? 'Completed Ventures' : 'Total Applications'}</p>
+              <p className="text-2xl font-bold text-slate-800">{isWorker ? workerStats.appliedJobs : isEntrepreneur ? entrepreneurStats.complete : investorStats.totalApplications}</p>
             </div>
             <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg flex items-center justify-center">
               <Target className="w-6 h-6 text-white" />
@@ -139,7 +209,7 @@ const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Role-Specific Content */}
         <div className="lg:col-span-2">
-          {user.role === 'investor' && (
+          {isInvestor && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -210,7 +280,7 @@ const DashboardPage: React.FC = () => {
             </motion.div>
           )}
 
-          {user.role === 'entrepreneur' && (
+          {isEntrepreneur && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -219,10 +289,10 @@ const DashboardPage: React.FC = () => {
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-slate-800">Your Ventures</h2>
-                <button className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center">
+                {/* <button onClick={() => setShowVentureForm(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center">
                   <Plus className="w-4 h-4 mr-2" />
                   Start New Venture
-                </button>
+                </button> */}
               </div>
 
               <div className="space-y-4">
@@ -265,7 +335,7 @@ const DashboardPage: React.FC = () => {
             </motion.div>
           )}
 
-          {user.role === 'worker' && (
+          {isWorker && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -273,153 +343,122 @@ const DashboardPage: React.FC = () => {
               className="bg-white/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200/50 shadow-sm mb-8"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-slate-800">Recommended Jobs</h2>
+                <h2 className="text-xl font-bold text-slate-800">Jobs</h2>
                 <Link
                   to="/jobs"
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                 >
-                  View All Jobs
-                  <ArrowUpRight className="w-4 h-4 ml-1" />
+                  View All
                 </Link>
               </div>
 
-              <div className="space-y-4">
-                {[
-                  {
-                    title: 'Frontend Developer',
-                    company: 'Tech Skills Center',
-                    wage: '$25/hour',
-                    type: 'Part-time',
-                    location: 'Remote',
-                    posted: '2 days ago'
-                  },
-                  {
-                    title: 'Farm Operations Assistant',
-                    company: 'Urban Farming Initiative',
-                    wage: '$18/hour',
-                    type: 'Full-time',
-                    location: 'Local',
-                    posted: '1 week ago'
-                  },
-                  {
-                    title: 'Sales Associate',
-                    company: 'Community Marketplace',
-                    wage: '$16/hour + commission',
-                    type: 'Part-time',
-                    location: 'Local',
-                    posted: '3 days ago'
-                  }
-                ].map((job, index) => (
-                  <div key={index} className="p-4 bg-slate-50/50 rounded-lg border border-slate-100">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-semibold text-slate-800">{job.title}</h3>
+              {(() => {
+                const defaultPreview = [
+                  { id: 's1', title: 'Frontend Developer', company: 'Tech Skills Center', location: 'Kigali' },
+                  { id: 's2', title: 'Farm Operations Assistant', company: 'Urban Farming Initiative', location: 'Kigali' },
+                  { id: 's3', title: 'Sales Associate', company: 'Community Marketplace', location: 'Kigali' },
+                ];
+                const preview = (jobs.length ? jobs : (defaultPreview as any)).slice(0, 3);
+                return (
+                  <div className="space-y-4">
+                    {preview.map((job: any) => (
+                      <div key={job.id} className="p-4 bg-slate-50/50 rounded-lg border border-slate-100">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-semibold text-slate-800">{job.title}</h3>
+                          <span className="text-xs text-slate-600">{job.location}</span>
+                        </div>
                         <p className="text-sm text-slate-600">{job.company}</p>
                       </div>
-                      <span className="text-sm font-medium text-green-600">{job.wage}</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center space-x-4 text-sm text-slate-600">
-                        <span>{job.type}</span>
-                        <span>{job.location}</span>
-                        <span>{job.posted}</span>
-                      </div>
-                      <button className="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors">
-                        Apply
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </motion.div>
           )}
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar: role-specific quick actions only */}
         <div className="space-y-8">
-          {/* Community Activity */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
             className="bg-white/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200/50 shadow-sm"
           >
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Community Activity</h3>
-            <div className="space-y-4">
-              {[
-                {
-                  user: 'Sarah M.',
-                  action: 'invested in Urban Farming',
-                  amount: '$500',
-                  time: '2h ago'
-                },
-                {
-                  user: 'John D.',
-                  action: 'launched Food Truck venture',
-                  amount: 'seeking $15k',
-                  time: '5h ago'
-                },
-                {
-                  user: 'Alice K.',
-                  action: 'got hired at Tech Center',
-                  amount: '$22/hr',
-                  time: '1d ago'
-                }
-              ].map((activity, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-green-400 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-white">
-                      {activity.user.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-800">
-                      <span className="font-medium">{activity.user}</span> {activity.action}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-green-600 font-medium">{activity.amount}</span>
-                      <span className="text-xs text-slate-500">{activity.time}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="bg-white/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200/50 shadow-sm"
-          >
             <h3 className="text-lg font-bold text-slate-800 mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <Link
-                to="/wallet"
-                className="flex items-center p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-              >
-                <DollarSign className="w-5 h-5 text-blue-600 mr-3" />
-                <span className="text-sm font-medium text-slate-800">Add Funds</span>
-              </Link>
-              <Link
-                to="/ventures"
-                className="flex items-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-              >
-                <Briefcase className="w-5 h-5 text-green-600 mr-3" />
-                <span className="text-sm font-medium text-slate-800">Explore Ventures</span>
-              </Link>
-              <Link
-                to="/community"
-                className="flex items-center p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
-              >
-                <Users className="w-5 h-5 text-purple-600 mr-3" />
-                <span className="text-sm font-medium text-slate-800">Join Discussion</span>
-              </Link>
+              {isWorker && (
+                <button onClick={() => setShowVentureForm(true)} className="w-full flex items-center justify-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-green-700">
+                  <Briefcase className="w-5 h-5 mr-3" />
+                  Add New Venture
+                </button>
+              )}
+              {isEntrepreneur && (
+                <button onClick={() => setShowVentureForm(true)} className="w-full flex items-center justify-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-green-700">
+                  <Briefcase className="w-5 h-5 mr-3" />
+                  Start New Venture
+                </button>
+              )}
+              {isInvestor && (
+                <button onClick={() => setShowJobForm(true)} className="w-full flex items-center justify-center p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-700">
+                  <Users className="w-5 h-5 mr-3" />
+                  Post a Job
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
       </div>
+
+      {/* Venture Form Modal */}
+      {showVentureForm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-lg p-6 rounded-xl">
+            <h3 className="text-lg font-semibold mb-4">{isWorker ? 'Add New Venture' : 'Start New Venture'}</h3>
+            <div className="space-y-4">
+              <input value={ventureForm.title} onChange={(e)=>setVentureForm({...ventureForm, title: e.target.value})} placeholder="Title" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <textarea value={ventureForm.description} onChange={(e)=>setVentureForm({...ventureForm, description: e.target.value})} placeholder="Description" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <select value={ventureForm.category} onChange={(e)=>setVentureForm({...ventureForm, category: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-lg">
+                <option value="technology">Technology</option>
+                <option value="agriculture">Agriculture</option>
+                <option value="retail">Retail</option>
+                <option value="services">Services</option>
+              </select>
+              <div className="flex justify-end space-x-3">
+                <button onClick={()=>setShowVentureForm(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+                <button onClick={handleCreateVenture} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Job Form Modal (Investor) */}
+      {showJobForm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-lg p-6 rounded-xl">
+            <h3 className="text-lg font-semibold mb-4">Post a Job</h3>
+            <div className="space-y-4">
+              <input value={jobForm.title} onChange={(e)=>setJobForm({...jobForm, title: e.target.value})} placeholder="Job title" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <input value={jobForm.company} onChange={(e)=>setJobForm({...jobForm, company: e.target.value})} placeholder="Company" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <input value={jobForm.location} onChange={(e)=>setJobForm({...jobForm, location: e.target.value})} placeholder="Location" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <select value={jobForm.type} onChange={(e)=>setJobForm({...jobForm, type: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-lg">
+                <option value="full-time">Full-time</option>
+                <option value="part-time">Part-time</option>
+                <option value="contract">Contract</option>
+                <option value="freelance">Freelance</option>
+              </select>
+              <input value={jobForm.category} onChange={(e)=>setJobForm({...jobForm, category: e.target.value})} placeholder="Category" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <input value={jobForm.salary} onChange={(e)=>setJobForm({...jobForm, salary: e.target.value})} placeholder="Salary" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <textarea value={jobForm.description} onChange={(e)=>setJobForm({...jobForm, description: e.target.value})} placeholder="Description" className="w-full px-4 py-3 border border-slate-200 rounded-lg" />
+              <div className="flex justify-end space-x-3">
+                <button onClick={()=>setShowJobForm(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+                <button onClick={handlePostJob} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Post</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

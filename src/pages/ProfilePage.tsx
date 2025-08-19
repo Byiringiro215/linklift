@@ -1,11 +1,23 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Settings, Shield, Bell, Globe, Camera, Check, Star, Award } from 'lucide-react';
+import { User, Settings, Shield, Bell, Camera, Check, Star, Award } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const ProfilePage: React.FC = () => {
-  const { user } = useUser();
-  const [activeTab, setActiveTab] = useState('profile');
+  const { user, setUser } = useUser();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const initialTab = useMemo(() => new URLSearchParams(location.search).get('tab') || 'profile', [location.search]);
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('ll_user');
+    } catch {}
+    setUser(null);
+    navigate('/');
+  };
   const [notifications, setNotifications] = useState({
     emailUpdates: true,
     investmentAlerts: true,
@@ -67,7 +79,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleNotificationChange = (key: string) => {
+  const handleNotificationChange = (key: keyof typeof notifications) => {
     setNotifications(prev => ({
       ...prev,
       [key]: !prev[key]
@@ -124,7 +136,7 @@ const ProfilePage: React.FC = () => {
       </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -154,7 +166,7 @@ const ProfilePage: React.FC = () => {
           <div className="text-3xl font-bold text-purple-600 mb-2">15</div>
           <div className="text-slate-600">Community Rank</div>
         </motion.div>
-      </div>
+      </div> */}
 
       {/* Tabs */}
       <motion.div
@@ -255,7 +267,13 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex justify-end">
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleLogout}
+                className="px-6 py-3 border border-red-300 text-red-600 rounded-lg font-medium transition-colors hover:bg-red-50 hover:border-red-400 hover:text-red-700 focus:outline-none focus:ring-1 focus:ring-red-300"
+              >
+                Log out
+              </button>
               <button className="bg-gradient-to-r from-blue-600 to-green-500 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transition-shadow">
                 Save Changes
               </button>
@@ -348,7 +366,7 @@ const ProfilePage: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => handleNotificationChange(key)}
+                  onClick={() => handleNotificationChange(key as keyof typeof notifications)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     enabled ? 'bg-blue-600' : 'bg-slate-200'
                   }`}

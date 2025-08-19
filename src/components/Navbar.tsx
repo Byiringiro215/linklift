@@ -1,20 +1,34 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, User, Wallet, Briefcase, Users, DollarSign, MessageSquare, Bell } from 'lucide-react';
+import { TrendingUp, User, Briefcase, Users, Bell } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
   const { user } = useUser();
 
-  const navItems = [
-    { path: '/dashboard', icon: TrendingUp, label: 'Dashboard' },
-    { path: '/ventures', icon: Briefcase, label: 'Ventures' },
-    { path: '/loans', icon: DollarSign, label: 'Loans' },
-    { path: '/jobs', icon: Users, label: 'Jobs' },
-    { path: '/community', icon: MessageSquare, label: 'Community' },
-    { path: '/wallet', icon: Wallet, label: 'Wallet' }
-  ];
+  const role = user?.role ?? null;
+  const navItems = (() => {
+    if (role === 'worker') {
+      return [
+        { path: '/dashboard', icon: TrendingUp, label: 'Dashboard' },
+        { path: '/jobs', icon: Users, label: 'Jobs' },
+        { path: '/ventures', icon: Briefcase, label: 'Ventures' },
+      ];
+    }
+    if (role === 'entrepreneur') {
+      return [
+        { path: '/dashboard', icon: TrendingUp, label: 'Dashboard' },
+        { path: '/ventures', icon: Briefcase, label: 'Ventures' },
+      ];
+    }
+    // investor or unauthenticated default
+    return [
+      { path: '/dashboard', icon: TrendingUp, label: 'Dashboard' },
+      { path: '/jobs', icon: Users, label: 'Jobs' },
+      { path: '/ventures', icon: Briefcase, label: 'Ventures' },
+    ];
+  })();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm">
@@ -45,9 +59,9 @@ const Navbar: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <button className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg">
+            <Link to="/profile?tab=notifications" className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg">
               <Bell className="w-5 h-5" />
-            </button>
+            </Link>
             <Link
               to="/profile"
               className="flex items-center space-x-2 p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg"

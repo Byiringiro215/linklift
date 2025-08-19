@@ -20,6 +20,9 @@ const DashboardPage: React.FC = () => {
     );
   }
 
+  const role = user.role ?? 'investor';
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'investor': return 'from-blue-500 to-blue-600';
@@ -55,9 +58,9 @@ const DashboardPage: React.FC = () => {
               Here's what's happening in your community today
             </p>
           </div>
-          <div className={`px-4 py-2 bg-gradient-to-r ${getRoleColor(user.role!)} text-white rounded-full text-sm font-medium flex items-center`}>
-            {React.createElement(getRoleIcon(user.role!), { className: 'w-4 h-4 mr-2' })}
-            {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
+          <div className={`px-4 py-2 bg-gradient-to-r ${getRoleColor(role)} text-white rounded-full text-sm font-medium flex items-center`}>
+            {React.createElement(getRoleIcon(role), { className: 'w-4 h-4 mr-2' })}
+            {roleLabel}
           </div>
         </div>
       </motion.div>

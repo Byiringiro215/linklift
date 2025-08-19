@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export type UserRole = 'investor' | 'entrepreneur' | 'worker' | null;
 
@@ -25,7 +25,26 @@ interface UserProviderProps {
 }
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('ll_user');
+      return stored ? (JSON.parse(stored) as User) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (user) {
+        localStorage.setItem('ll_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('ll_user');
+      }
+    } catch {
+      // Ignore storage errors (private mode, etc.)
+    }
+  }, [user]);
 
   return (
     <UserContext.Provider value={{
